@@ -30,9 +30,9 @@ services:
     container_name: client1
     hostname: client1
     extra_hosts:
-      - "webserver: ${IP_WWW_SERVER}"
-      - "wireguard: ${IP_VPN_SERVER}"
-      - "dnsserver: ${IP_DNS_SERVER}"
+      - "webserver:${IP_WWW_SERVER}"
+      - "wireguard:${IP_VPN_SERVER}"
+      - "dnsserver:${IP_DNS_SERVER}"
     networks:
       client_net:
         ipv4_address: ${IP_CLIENT_1}
@@ -51,10 +51,10 @@ services:
     hostname: firewall
     working_dir: /usr/local/bin
     extra_hosts:
-      - "client_1: ${IP_CLIENT_1}"
-      - "webserver: ${IP_WWW_SERVER}"
-      - "dnsserver: ${IP_DNS_SERVER}"
-      - "wireguard: ${IP_VPN_SERVER}"   
+      - "client_1:${IP_CLIENT_1}"
+      - "webserver:${IP_WWW_SERVER}"
+      - "dnsserver:${IP_DNS_SERVER}"
+      - "wireguard:${IP_VPN_SERVER}"   
     networks:
       client_net:
         ipv4_address: ${IP_FW_CLIENT}
@@ -78,9 +78,9 @@ services:
     container_name: webserver
     hostname: servidorweb
     extra_hosts:
-      - "client_1: ${IP_CLIENT_1}"
-      - "dnsserver: ${IP_DNS_SERVER}"
-      - "wireguard: ${IP_VPN_SERVER}"   
+      - "client_1:${IP_CLIENT_1}"
+      - "dnsserver:${IP_DNS_SERVER}"
+      - "wireguard:${IP_VPN_SERVER}"   
     networks:
       www_net:
         ipv4_address: ${IP_WWW_SERVER}
@@ -93,8 +93,8 @@ services:
       container_name: wireguard
       hostname: wireguard
       extra_hosts:
-      - "client_1: ${IP_CLIENT_1}"
-      - "server: ${IP_WWW_SERVER}"
+      - "client_1:${IP_CLIENT_1}"
+      - "server:${IP_WWW_SERVER}"
       networks:
         vpn_net:
           ipv4_address: ${IP_VPN_SERVER}

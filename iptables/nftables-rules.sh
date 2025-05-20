@@ -16,10 +16,10 @@ define IP_WWW_SERVER=172.31.0.3
 define IP_VPN_SERVER=10.0.0.3
 define IP_DNS_SERVER=9.9.9.3
 
-define IFACE_DNS="eth1"
-define IFACE_WWW="eth3"
-define IFACE_VPN="eth2"
-define IFACE_CLIENT="eth0"
+define IFACE_DNS="eth0"
+define IFACE_WWW="eth2"
+define IFACE_VPN="eth1"
+define IFACE_CLIENT="eth3"
 
 add table ip filtrat
 add table ip nat
@@ -33,5 +33,3 @@ add chain ip nat prerouting { type nat hook prerouting priority 0 ; }
 add rule ip filtrat forward ct state established,related counter accept
 add rule ip filtrat forward  iif $IFACE_CLIENT ip saddr $IP_CLIENT_1 icmp type {echo-request,echo-reply} counter accept
 add rule ip filtrat forward iif $IFACE_CLIENT ip saddr $CLIENT ip daddr $IP_WWW_SERVER tcp dport http counter accept
-
-
