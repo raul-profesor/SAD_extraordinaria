@@ -88,24 +88,6 @@ services:
       - NET_ADMIN
     command: /bin/bash -c "ip route del default && ip route add default via ${IP_FW_WWW} && service nginx start && exec sleep infinity"
 
-  # ssh_server:
-  #   build:
-  #     context: ./dockerfiles
-  #     dockerfile: Dockerfile.ssh
-  #   container_name: ssh_server
-  #   hostname: ssh_server
-  #   extra_hosts:
-  #     - "client_1: ${IP_CLIENT_1}"
-  #     - "wireguard: ${IP_WIREGUARD}"
-  #   networks:
-  #     lan:
-  #       ipv4_address: ${IP_SSHSERVER}
-  #   cap_add:
-  #     - NET_ADMIN
-  #   command: /bin/bash -c "ip route del default && ip route add default via ${IP_FIREWALL_LAN} && service ssh start && exec sleep infinity"
-  #   restart: unless-stopped
-
-
   wireguard:
       image: lscr.io/linuxserver/wireguard:latest
       container_name: wireguard
@@ -128,7 +110,7 @@ services:
         - SERVERPORT=51820
         - PEERS=2 # 4 clientes
         - INTERNAL_SUBNET=${VPN_RED} # Red WireGuard
-        - ALLOWEDIPS=${VPN_RED},${WWW},${DNS} # Red que se enruta
+        - ALLOWEDIPS=${VPN_RED},${WWW} # Red que se enruta
         - LOG_CONFS=false # No guardar conf en logs
       volumes:
         - ./volumes/wireguard:/config
