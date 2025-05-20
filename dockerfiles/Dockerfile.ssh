@@ -1,0 +1,13 @@
+FROM debian:latest
+
+RUN apt-get update && \
+ apt-get install -y openssh-server iproute2
+
+RUN useradd -rm -d /home/sad -s /bin/bash -g root -G sudo -u 1000 sad
+
+RUN echo 'sad:seguretat' | chpasswd
+
+RUN mkdir /var/run/sshd
+
+EXPOSE 22
+

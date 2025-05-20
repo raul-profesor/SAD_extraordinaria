@@ -1,0 +1,155 @@
+# Definim les xarxes que tindrem 
+networks:
+  client_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CLIENT}
+  www_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${WWW}
+  vpn_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${VPN}
+  dns_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DNS}
+
+# Definim tots els endpoints que formaran part de l'escenari
+services:
+  client_1:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile
+    container_name: client1
+    hostname: client1
+    extra_hosts:
+      - "webserver: ${IP_WWW_SERVER}"
+      - "wireguard: ${IP_VPN_SERVER}"
+      - "dnsserver: ${IP_DNS_SERVER}"
+    networks:
+      client_net:
+        ipv4_address: ${IP_CLIENT_1}
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./wireguard:/etc/wireguard
+    privileged: true
+    command: /bin/bash -c "echo '1' > /proc/sys/net/ipv4/ip_forward && ip route del default && ip route add default via ${IP_FW_CLIENT} && exec sleep infinity"
+  
+  firewall:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.firewall
+    container_name: firewall
+    hostname: firewall
+    working_dir: /usr/local/bin
+    extra_hosts:
+      - "client_1: ${IP_CLIENT_1}"
+      - "webserver: ${IP_WWW_SERVER}"
+      - "dnsserver: ${IP_DNS_SERVER}"
+      - "wireguard: ${IP_VPN_SERVER}"   
+    networks:
+      client_net:
+        ipv4_address: ${IP_FW_CLIENT}
+      www_net:
+        ipv4_address: ${IP_FW_WWW}
+      dns_net:
+        ipv4_address: ${IP_FW_DNS}
+      vpn_net:
+        ipv4_address: ${IP_FW_VPN}
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./iptables:/usr/local/bin
+    command: /bin/bash -c "echo '1' > /proc/sys/net/ipv4/ip_forward && ip route del default && exec sleep infinity"
+
+  webserver:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.server
+    container_name: webserver
+    hostname: servidorweb
+    extra_hosts:
+      - "client_1: ${IP_CLIENT_1}"
+      - "dnsserver: ${IP_DNS_SERVER}"
+      - "wireguard: ${IP_VPN_SERVER}"   
+    networks:
+      www_net:
+        ipv4_address: ${IP_WWW_SERVER}
+    cap_add:
+      - NET_ADMIN
+    command: /bin/bash -c "ip route del default && ip route add default via ${IP_FW_WWW} && service nginx start && exec sleep infinity"
+
+  # ssh_server:
+  #   build:
+  #     context: ./dockerfiles
+  #     dockerfile: Dockerfile.ssh
+  #   container_name: ssh_server
+  #   hostname: ssh_server
+  #   extra_hosts:
+  #     - "client_1: ${IP_CLIENT_1}"
+  #     - "wireguard: ${IP_WIREGUARD}"
+  #   networks:
+  #     lan:
+  #       ipv4_address: ${IP_SSHSERVER}
+  #   cap_add:
+  #     - NET_ADMIN
+  #   command: /bin/bash -c "ip route del default && ip route add default via ${IP_FIREWALL_LAN} && service ssh start && exec sleep infinity"
+  #   restart: unless-stopped
+
+
+  wireguard:
+      image: lscr.io/linuxserver/wireguard:latest
+      container_name: wireguard
+      hostname: wireguard
+      extra_hosts:
+      - "client_1: ${IP_CLIENT_1}"
+      - "server: ${IP_WWW_SERVER}"
+      networks:
+        vpn_net:
+          ipv4_address: ${IP_VPN_SERVER}
+      cap_add:
+        - NET_ADMIN
+        - SYS_MODULE
+      command: /bin/bash -c "apk add tcpdump && ip route del default && ip route add default via ${IP_FW_VPN} && exec sleep infinity"
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+        - SERVERURL=${IP_VPN_SERVER} # DNS dinámico
+        - SERVERPORT=51820
+        - PEERS=2 # 4 clientes
+        - INTERNAL_SUBNET=${VPN_RED} # Red WireGuard
+        - ALLOWEDIPS=${VPN_RED},${WWW},${DNS} # Red que se enruta
+        - LOG_CONFS=false # No guardar conf en logs
+      volumes:
+        - ./volumes/wireguard:/config
+        - /lib/modules:/lib/modules
+      ports:
+        - 51820:51820/udp
+      sysctls:
+        - net.ipv4.conf.all.src_valid_mark=1
+        - net.ipv4.conf.all.forwarding=1
+      restart: unless-stopped
+  dns-server:
+    image: andyshinn/dnsmasq:2.78
+    container_name: dnsserver
+    networks:
+      dns_net:  
+        ipv4_address: ${IP_DNS_SERVER}
+    environment:
+      - DNSMASQ_LISTEN=0.0.0.0
+      - DNSMASQ_NO_DHCP=1
+    privileged: true
+    command: >
+      sh -c "ip route del default && ip route add default via ${IP_FW_DNS} && exec sleep infinity"
+    entrypoint: ["/bin/sh", "-c", "ip route del default && ip route add default via ${IP_FW_DNS} && /usr/sbin/dnsmasq --no-daemon --address=/example.com/127.0.0.1"]
+  
